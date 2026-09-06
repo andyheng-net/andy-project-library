@@ -1,5 +1,6 @@
 export { createBrowserSupabaseClient } from "./supabase/browserClient";
 export { createServerSupabaseClient, createAdminSupabaseClient } from "./supabase/serverClient";
+export { resolveSupabaseSchema } from "./supabase/schema";
 
 export { buildAuthProxy, DEFAULT_PROXY_MATCHER_CONFIG, type BuildAuthProxyOptions } from "./auth/authProxy";
 export { handleGoogleOAuthCallback } from "./auth/callbackHandler";

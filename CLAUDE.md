@@ -60,7 +60,18 @@ src/llm/retryOn429.ts            withRateLimitRetry(call) - retries a 429 or an 
                                   once, waiting the real signaled delay from rateLimitInfo.ts
                                   (clamped 500ms-30s), falling back to a flat 12s guess only when
                                   no signal is available.
+src/supabase/schema.ts           resolveSupabaseSchema() (Decision 4) - reads
+                                  NEXT_PUBLIC_SUPABASE_SCHEMA, defaults to "public". Wired into all
+                                  3 Supabase client factories via db.schema, so a consumer's local
+                                  dev can point at a "dev" schema in the SAME Supabase project
+                                  instead of hitting production tables - no separate project, no
+                                  code changes to table names. Requires the "dev" schema to be
+                                  added to that Supabase project's Data API exposed-schema list
+                                  first (dashboard-only, per-project, not something this library
+                                  can automate for a consumer).
 ```
+
+Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG` and the auth handlers has a matching `*.test.ts` (`node --test --experimental-strip-types`, Node >=24, run via `npm test`) - added Decision 4, this repo had zero tests before then.
 
 ## Consumers
 
