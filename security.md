@@ -19,6 +19,15 @@ While wiring up this library's `NEXT_PUBLIC_SUPABASE_SCHEMA` support against `an
 
 ## Audit Log
 
+### 06/09/2026 - senior-dev-review (Decision 5/6, cross-repo pass)
+Full findings and the combined `senior-dev-review` + `audit-complete` table live in
+`andy-namecard-holder/security.md` (this session touched all 3 repos - the library, this app, and
+`andy-property-investment-calculator` - as one milestone). Two findings specific to this repo: the
+Decision 6 type-inference bug (below, already fixed) and an accepted-risk finding logged directly in
+Decision 5 above - the shared limiter's fixed 60-second window allows a brief ~2x burst right at the
+window boundary; not fixed (disproportionate complexity for a low-volume personal tool, still
+bounded, `withRateLimitRetry` catches any resulting 429).
+
 ### 06/09/2026 - Decision 6, explicit Supabase client factory return types
 | # | Check | Result | Notes |
 |---|---|---|---|

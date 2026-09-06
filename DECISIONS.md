@@ -115,6 +115,15 @@ control the real installed version via their own `package.json`, unaffected. `Gr
 into this mechanism - `andy-property-investment-calculator` doesn't call Groq at all currently
 (Decision 20), so there's no actual cross-app contention on it yet; the same `acquireSharedLlmSlot`
 call can be added to a Groq call site later with no further library changes if that ever changes.
+**Accepted risk (found in `senior-dev-review`, 06/09/2026): the limiter uses one fixed 60-second
+window per provider, not a sliding window/token bucket.** Both apps share the same row (keyed only
+by provider name), so up to `limitPerMinute` claims can land just before a window resets and
+another full `limitPerMinute` the instant it rolls over - a brief ~2x burst clustered around the
+boundary rather than requests smoothed evenly across the minute. Not fixed: a sliding-window/token-
+bucket rewrite is disproportionate complexity for a low-volume personal tool, the burst is still
+bounded (never exceeds 2x for one boundary instant, not unbounded), and any real 429 this causes on
+the provider side is still caught by the existing `withRateLimitRetry`. Revisit only if this
+account's real-world 429 rate becomes a genuine nuisance in practice.
 **Shipped as v1.2.0, immediately superseded by v1.2.1 (Decision 6)** - v1.2.0's own
 `sharedRateLimit.ts` had a type error (fixed before either consumer adopted it in practice; see
 Decision 6 for the deeper pre-existing bug it also surfaced).
