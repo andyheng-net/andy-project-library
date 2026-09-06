@@ -19,6 +19,13 @@ While wiring up this library's `NEXT_PUBLIC_SUPABASE_SCHEMA` support against `an
 
 ## Audit Log
 
+### 06/09/2026 - Decision 6, explicit Supabase client factory return types
+| # | Check | Result | Notes |
+|---|---|---|---|
+| 1 | Correctness (type-check reliability) | FIXED | `createServerSupabaseClient`/`createAdminSupabaseClient` return types were inferred, leaking `resolveSupabaseSchema()`'s plain `string` into a non-literal generic slot that could mismatch a consumer's own `SupabaseClient`-typed parameter depending on unrelated type-checking order elsewhere in the program - confirmed live it broke two untouched call sites in `andy-namecard-holder` purely from Decision 5 adding a new file. Now explicit, removing the inference. |
+| 2 | Regression scope | PASS | Neither consumer app uses a generated `Database` type (repo-wide grep, both apps) - no real type safety lost by widening to `SupabaseClient<any, any, any>` |
+| 3 | End-to-end verification | PASS | `andy-namecard-holder`'s `next build` (clean `.next`) verified failing before this fix and passing after, with Decision 5's `sharedRateLimit.ts` present in both cases |
+
 ### 06/09/2026 - Decision 5, shared SEA-LION rate limiter
 | # | Check | Result | Notes |
 |---|---|---|---|

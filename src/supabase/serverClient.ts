@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { resolveSupabaseSchema } from "./schema";
 
@@ -9,7 +9,19 @@ import { resolveSupabaseSchema } from "./schema";
 // production) so this is opt-in per environment. Auth itself (.auth.*) is
 // unaffected either way - it lives in Supabase's own "auth" schema,
 // independent of this data-query default.
-export async function createServerSupabaseClient() {
+//
+// Explicit return type (Decision 6) - resolveSupabaseSchema() returns plain
+// `string`, which otherwise leaks into an INFERRED return type as a
+// non-literal SchemaName generic (SupabaseClient<any, "public", string,
+// ...>). That leaked type can disagree with another file's own
+// SupabaseClient-typed parameter (which defaults its SchemaName to the
+// "public" literal) depending on unrelated type-checking order elsewhere in
+// the program - confirmed live, adding an unrelated new file to this
+// library was enough to newly break two call sites in andy-namecard-holder
+// that hadn't changed at all. Declaring the type explicitly removes the
+// inference entirely; neither consumer app uses a generated Database type,
+// so this loses no real type safety.
+export async function createServerSupabaseClient(): Promise<SupabaseClient<any, any, any>> {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -35,7 +47,7 @@ export async function createServerSupabaseClient() {
   );
 }
 
-export function createAdminSupabaseClient() {
+export function createAdminSupabaseClient(): SupabaseClient<any, any, any> {
   return createSupabaseClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

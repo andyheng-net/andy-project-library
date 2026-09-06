@@ -30,7 +30,15 @@ Pin to a tag, never `main` - each consumer upgrades deliberately, so a library c
 src/index.ts                     Re-exports everything below.
 src/supabase/browserClient.ts    createBrowserSupabaseClient() - browser Supabase client.
 src/supabase/serverClient.ts     createServerSupabaseClient() (cookie-based, server) and
-                                  createAdminSupabaseClient() (service-role, bypasses RLS).
+                                  createAdminSupabaseClient() (service-role, bypasses RLS). Both
+                                  declare an explicit SupabaseClient<any, any, any> return type
+                                  (Decision 6) - letting it infer instead leaked
+                                  resolveSupabaseSchema()'s plain string return into a non-literal
+                                  SchemaName generic that could mismatch a consumer's own
+                                  SupabaseClient-typed parameter, and did so live once Decision 5
+                                  added an unrelated new file to this repo. Don't remove the
+                                  annotations without re-verifying a real next build in both
+                                  consumer apps.
 src/auth/authProxy.ts            buildAuthProxy(options) - Next.js proxy/middleware factory:
                                   public-path allowlist + Supabase (Google OAuth) session check
                                   against a single GOOGLE_ALLOWED_EMAIL. Takes an optional

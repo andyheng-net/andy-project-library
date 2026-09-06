@@ -115,3 +115,41 @@ control the real installed version via their own `package.json`, unaffected. `Gr
 into this mechanism - `andy-property-investment-calculator` doesn't call Groq at all currently
 (Decision 20), so there's no actual cross-app contention on it yet; the same `acquireSharedLlmSlot`
 call can be added to a Groq call site later with no further library changes if that ever changes.
+**Shipped as v1.2.0, immediately superseded by v1.2.1 (Decision 6)** - v1.2.0's own
+`sharedRateLimit.ts` had a type error (fixed before either consumer adopted it in practice; see
+Decision 6 for the deeper pre-existing bug it also surfaced).
+
+## Decision 6 - Explicit return types on the two Supabase client factories
+**Date:** 06/09/2026 (same day as Decision 5, found while wiring it up)
+**What was decided:** `createServerSupabaseClient()`/`createAdminSupabaseClient()` in
+`src/supabase/serverClient.ts` now both explicitly declare `Promise<SupabaseClient<any, any, any>>`/
+`SupabaseClient<any, any, any>` return types instead of letting TypeScript infer them.
+**The bug this fixes:** `resolveSupabaseSchema()` returns plain `string` (Decision 4's `"public" |
+"dev"` toggle isn't a literal union in its type signature), which leaked into these two functions'
+INFERRED return types as a non-literal `SchemaName` generic slot -
+`SupabaseClient<any, "public", string, any, any>`. That's structurally incompatible with a
+consumer's own `SupabaseClient`-typed parameter, which defaults `SchemaName` to the literal
+`"public"` when unspecified - andy-namecard-holder's `hasCardsNeedingRecovery(supabase:
+ReturnType<typeof createAdminClient>)` is exactly this shape.
+**Why this had never broken a build before:** confirmed live - the bug was already latent (a real,
+pre-existing structural mismatch), but TypeScript's inference for an UNANNOTATED return type is
+computed lazily and apparently order/cache-sensitive enough that it had never previously resolved
+to the mismatched instantiation in practice. Adding Decision 5's `sharedRateLimit.ts` (an unrelated
+new file, no import of `serverClient.ts` at all) was enough to flip it: reproduced by installing
+only Decision 5's change with a clean `.next` cache in `andy-namecard-holder` - `page.tsx` and
+`processAsync.ts`'s calls to `hasCardsNeedingRecovery` broke, despite neither file changing.
+Reverting to v1.1.0 and rebuilding clean confirmed zero errors, isolating the cause to this
+library's new file alone, not those two consumer files. Declaring the return type explicitly
+removes the inference (and its order-sensitivity) entirely - verified by re-running
+`andy-namecard-holder`'s `next build` clean afterward.
+**Consequences:** Neither consumer app uses a generated `Database` type (confirmed via a repo-wide
+grep for `Database` in both), so this loses no real schema-aware type-checking that was actually in
+effect - the literal-vs-`string` distinction being fixed here was never doing useful work in
+practice, only causing this failure mode. `acquireSharedLlmSlot`'s own `getClient()` (Decision 5)
+was given the same treatment (explicit `SupabaseClient<any, any, any>` return type, explicit
+`createClient<any, "public", "public">(...)` generic arguments on the call itself) for the same
+reason - `SchemaNameOrClientOptions` never appears in `createClient`'s own parameter list, so it's
+only ever inferrable from a computed default, never from the call's actual arguments, making
+implicit inference here fragile by construction, not just an unlucky one-off.
+**Shipped as v1.2.1** (v1.2.0 is not deleted or force-moved, per this repo's tag-immutability rule -
+it's simply superseded; no consumer had adopted v1.2.0 before this fix landed).

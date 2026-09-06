@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 // Coordinates a real, external, account-wide provider quota (e.g. SEA-LION's
 // 10 req/min) that multiple separately-deployed consumer apps share on one
@@ -31,11 +31,18 @@ export const SEA_LION_SHARED_LIMIT_PER_MINUTE = 10;
 
 type ClaimResult = { allowed: boolean; wait_ms: number };
 
-let client: ReturnType<typeof createClient> | null = null;
+// Deliberately loose generics (matching this whole codebase's convention -
+// neither consumer app uses a generated Database type). Pinned explicitly
+// on both the variable and the createClient call itself: createClient's
+// SchemaNameOrClientOptions generic never appears in its parameter list at
+// all, so it's only ever inferrable from a computed default, not from the
+// call's actual arguments - leaving it implicit produced a return type that
+// disagreed with itself across the cached-variable re-assignment below.
+let client: SupabaseClient<any, any, any> | null = null;
 
-function getClient() {
+function getClient(): SupabaseClient<any, any, any> {
   if (!client) {
-    client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    client = createClient<any, "public", "public">(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: { autoRefreshToken: false, persistSession: false },
       db: { schema: "public" },
     });
