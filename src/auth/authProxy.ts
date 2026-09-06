@@ -59,6 +59,12 @@ export function buildAuthProxy(options: BuildAuthProxyOptions) {
   };
 }
 
+// Reference only - Next.js statically parses a proxy/middleware file's
+// `config` export at build time and rejects an imported reference (confirmed
+// live: "Next.js can't recognize the exported `config` field ... needs to be
+// a static object"). Each consumer must copy this literal into its own
+// proxy.ts rather than importing it - keep both in sync by hand if this ever
+// changes.
 export const DEFAULT_PROXY_MATCHER_CONFIG = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
