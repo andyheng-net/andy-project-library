@@ -69,9 +69,18 @@ src/supabase/schema.ts           resolveSupabaseSchema() (Decision 4) - reads
                                   added to that Supabase project's Data API exposed-schema list
                                   first (dashboard-only, per-project, not something this library
                                   can automate for a consumer).
+src/llm/sharedRateLimit.ts     acquireSharedLlmSlot(provider, limitPerMinute) (Decision 5) - waits
+                                  for a real slot on a provider's account-wide rate limit before a
+                                  consumer's own fetch, coordinated via a new
+                                  public.llm_shared_rate_limits table + claim_llm_rate_limit_slot
+                                  RPC in the Supabase project both consumers share. Exports
+                                  SEA_LION_SHARED_LIMIT_PER_MINUTE = 10. Always targets the fixed
+                                  "public" schema (never resolveSupabaseSchema()) - see Decision 5
+                                  for why. Fails open on any RPC error or after MAX_WAIT_MS
+                                  (70s) - never blocks a real call forever.
 ```
 
-Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG` and the auth handlers has a matching `*.test.ts` (`node --test --experimental-strip-types`, Node >=24, run via `npm test`) - added Decision 4, this repo had zero tests before then.
+Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG`, the auth handlers, and the Supabase client factories has a matching `*.test.ts` (`node --test --experimental-strip-types`, Node >=24, run via `npm test`) - added Decision 4, this repo had zero tests before then. `sharedRateLimit.test.ts` only covers its pure `clampWaitMs` boundary math, not `acquireSharedLlmSlot` itself (real Supabase I/O) - verified live instead, see Decision 5.
 
 ## Consumers
 

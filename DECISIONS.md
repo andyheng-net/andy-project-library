@@ -70,3 +70,48 @@ a consumer. Added this library's first test suite in the same pass (`node --test
 `parseModelJson`, `readRateLimitInfo`, and `withRateLimitRetry`; the Supabase client factories and
 auth handlers themselves aren't unit-tested (thin wrappers around `@supabase/supabase-js`/Next.js
 APIs, better covered by each consumer's own integration-level testing).
+
+## Decision 5 - Shared cross-app SEA-LION rate limiter (`acquireSharedLlmSlot`)
+**Date:** 06/09/2026
+**What was decided:** Added `src/llm/sharedRateLimit.ts` (`acquireSharedLlmSlot(provider,
+limitPerMinute)`, exported alongside `SEA_LION_SHARED_LIMIT_PER_MINUTE = 10`). Both
+`andy-namecard-holder` and `andy-property-investment-calculator` call SEA-LION's vision/text API
+on the exact same `SEA_LION_API_KEY` (Decision 20 in the calculator's own DECISIONS.md), which caps
+at 10 req/min account-wide - each app's own `withRateLimitRetry` only reacts to a 429 after the
+fact, and has no way to know the OTHER app already spent part of that shared budget this minute.
+`acquireSharedLlmSlot` calls a new RPC (`claim_llm_rate_limit_slot`, atomic row-locked
+read-modify-write over a new `public.llm_shared_rate_limits` table) in the Supabase project both
+apps already share (Decision 10 in the calculator's DECISIONS.md), and waits (bounded, `MAX_WAIT_MS
+= 70_000`) for a real slot instead of guessing independently. Call it immediately before the actual
+provider `fetch`, not wrapped around `withRateLimitRetry` - it prevents the 429 in the first place;
+`withRateLimitRetry` still covers a 429 slipping through anyway.
+**Why this table always uses the fixed "public" schema, not `resolveSupabaseSchema()`:** the SEA-LION
+quota is one real external resource that exists independent of which app, environment, or
+`NEXT_PUBLIC_SUPABASE_SCHEMA` setting happens to be calling it - a local `npm run dev` session
+pointed at the `dev` schema still spends the exact same real quota as a production call. Coordinating
+in a schema-isolated table would silently exclude local-dev traffic from the one thing this exists
+to prevent.
+**Fails open, always:** any RPC error, or exhausting the full `MAX_WAIT_MS` budget without a slot,
+logs and lets the caller proceed anyway - a DB hiccup or a stuck coordinator must never be able to
+block a real card/document upload indefinitely. This makes the mechanism a best-effort scheduler,
+not a hard guarantee - accepted, since the alternative (blocking forever) is strictly worse for a
+low-volume personal tool.
+**Migration applied directly via the Supabase Management API** (`POST
+/v1/projects/{ref}/database/query`, not a tracked migration file - matches this project's existing
+DB-change convention of applying SQL directly and documenting it here, same as both consumer apps
+already do). RLS enabled on the new table with all grants revoked from `anon`/`authenticated`
+(consistent with every other table across both consumer apps); the RPC is `SECURITY DEFINER`,
+execute revoked from `anon`/`authenticated`, granted only to `service_role`. Verified live: called
+the RPC 4 times against a temporary `limit=3` test row via the Management API directly (not the real
+SEA-LION account) - first 3 calls returned `allowed:true`, the 4th correctly returned
+`allowed:false` with a real `wait_ms`; test row deleted after.
+**Alternatives considered:** A second SEA-LION account/key per app (Andy's other option, offered
+first) - simpler (zero code), but rejected in favor of this once Andy chose it: a real coordinator
+scales to any number of future apps sharing any future provider, not just a one-time fix for the
+current two.
+**Consequences:** `@supabase/supabase-js` is now also a `devDependency` here (already a
+`peerDependency`) purely so this repo's own test suite can resolve the import - consumers still
+control the real installed version via their own `package.json`, unaffected. `Groq` is NOT wired
+into this mechanism - `andy-property-investment-calculator` doesn't call Groq at all currently
+(Decision 20), so there's no actual cross-app contention on it yet; the same `acquireSharedLlmSlot`
+call can be added to a Groq call site later with no further library changes if that ever changes.

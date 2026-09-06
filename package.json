@@ -16,5 +16,8 @@
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.114.0",
     "next": "^16.0.0"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.114.0"
   }
 }

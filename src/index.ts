@@ -9,3 +9,4 @@ export { createLogoutHandler, type LogoutHandlerOptions } from "./auth/logoutHan
 export { parseModelJson } from "./llm/parseModelJson";
 export { readRateLimitInfo, type RateLimitInfo } from "./llm/rateLimitInfo";
 export { withRateLimitRetry } from "./llm/retryOn429";
+export { acquireSharedLlmSlot, SEA_LION_SHARED_LIMIT_PER_MINUTE } from "./llm/sharedRateLimit";
