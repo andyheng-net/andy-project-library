@@ -88,7 +88,7 @@ src/llm/sharedRateLimit.ts     acquireSharedLlmSlot(provider, limitPerMinute) (D
                                   (70s) - never blocks a real call forever.
 ```
 
-Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG`, the auth handlers, and the Supabase client factories has a matching `*.test.ts` (`node --test --experimental-strip-types`, Node >=24, run via `npm test`) - added Decision 4, this repo had zero tests before then. `sharedRateLimit.test.ts` only covers its pure `clampWaitMs` boundary math, not `acquireSharedLlmSlot` itself (real Supabase I/O) - verified live instead, see Decision 5.
+Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG`, the auth handlers, and the Supabase client factories has a matching `*.test.ts` (`node --test --experimental-strip-types`, Node >=24, run via `npm test`) - added Decision 4, this repo had zero tests before then. `sharedRateLimit.test.ts` only covers its pure `clampWaitMs` boundary math, not `acquireSharedLlmSlot` itself (real Supabase I/O) - verified live instead, see Decision 5. Test files: `src/llm/parseModelJson.test.ts`, `src/llm/rateLimitInfo.test.ts`, `src/llm/retryOn429.test.ts`, `src/llm/sharedRateLimit.test.ts`, `src/supabase/schema.test.ts`.
 
 ## Consumers
 
@@ -98,3 +98,4 @@ Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG`, the aut
 ## Other Files In This Repo
 
 - `DECISIONS.md` - decision log.
+- `security.md` - risk register + audit log (public-by-design note, tag-immutability rule).
