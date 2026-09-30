@@ -86,9 +86,20 @@ src/llm/sharedRateLimit.ts     acquireSharedLlmSlot(provider, limitPerMinute) (D
                                   "public" schema (never resolveSupabaseSchema()) - see Decision 5
                                   for why. Fails open on any RPC error or after MAX_WAIT_MS
                                   (70s) - never blocks a real call forever.
+src/log/failureLog.ts          createFailureLog({project}) (Decision 7) -> {fail(task, err, {cause,
+                                  provider, details}), wrap(task, fn), run(task, fn), flush()}. The
+                                  TypeScript twin of sckyroom-project-library's failureLog.js (same
+                                  API, same activity_events row shape). Failures only; writes to
+                                  activity_events in the shared personal Supabase project (schema
+                                  from NEXT_PUBLIC_SUPABASE_SCHEMA, so local dev -> dev), read
+                                  nightly by sckyroom-bug-hunter. Never throws, 5s timeout, masks
+                                  personal data + secrets, rolls repeats into `count`. Also exports
+                                  classifyFailureCause, detectProvider, stackFilesOf,
+                                  maskPersonalData, maskSecrets, FAILURE_CAUSES. Self-contained (no
+                                  imports) so it runs under both Next.js and node --test.
 ```
 
-Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG`, the auth handlers, and the Supabase client factories has a matching `*.test.ts` (`node --test --experimental-strip-types`, Node >=24, run via `npm test`) - added Decision 4, this repo had zero tests before then. `sharedRateLimit.test.ts` only covers its pure `clampWaitMs` boundary math, not `acquireSharedLlmSlot` itself (real Supabase I/O) - verified live instead, see Decision 5. Test files: `src/llm/parseModelJson.test.ts`, `src/llm/rateLimitInfo.test.ts`, `src/llm/retryOn429.test.ts`, `src/llm/sharedRateLimit.test.ts`, `src/supabase/schema.test.ts`.
+Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG`, the auth handlers, and the Supabase client factories has a matching `*.test.ts` (`node --test --experimental-strip-types`, Node >=24, run via `npm test`) - added Decision 4, this repo had zero tests before then. `sharedRateLimit.test.ts` only covers its pure `clampWaitMs` boundary math, not `acquireSharedLlmSlot` itself (real Supabase I/O) - verified live instead, see Decision 5. Test files: `src/llm/parseModelJson.test.ts`, `src/llm/rateLimitInfo.test.ts`, `src/llm/retryOn429.test.ts`, `src/llm/sharedRateLimit.test.ts`, `src/supabase/schema.test.ts`, `src/log/failureLog.test.ts`.
 
 ## Consumers
 

@@ -162,3 +162,22 @@ only ever inferrable from a computed default, never from the call's actual argum
 implicit inference here fragile by construction, not just an unlucky one-off.
 **Shipped as v1.2.1** (v1.2.0 is not deleted or force-moved, per this repo's tag-immutability rule -
 it's simply superseded; no consumer had adopted v1.2.0 before this fix landed).
+
+## Decision 7 - Shared failure log (`createFailureLog`, v1.3.0)
+
+**Context (30/09/2026, sckyroom-bug-hunter M17-03):** Andy asked for every repo to record its failed
+tasks and their causes so Bug Hunter can read them. His call: Sckyroom repos log through
+`sckyroom-project-library`, his personal repos through this library, same API and table shape.
+**What was decided:** `src/log/failureLog.ts` ports sckyroom-project-library's `failureLog.js` (its
+Decision 28): `createFailureLog({ project })` -> `fail`/`wrap`/`run`/`flush`, one row per failure to
+`activity_events` (created by Bug Hunter's `migrations/external/activity_events_public.sql`, public +
+dev). Env defaults: `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` or
+`SUPABASE_SECRET_KEY`, schema from `NEXT_PUBLIC_SUPABASE_SCHEMA` (Decision 4) so local dev writes to
+`dev`. Never throws, 5s timeout, masks personal data and secrets, caps sizes, rolls repeats into
+`count`. Self-contained with no imports, because `node --test --experimental-strip-types` cannot
+resolve the extensionless imports Next.js uses. No Node-only modules, so it loads in the Edge runtime.
+**Serverless caveat:** Vercel freezes an idle instance instead of exiting it, so a held repeat may
+only be written with the next failure after the window; the first occurrence is always written at once.
+**Verified:** 5 new tests, 27/27 pass; strict `tsc` clean; live row written to the personal project's
+`public.activity_events`, read back (cause network) and deleted.
+**Consumers:** none yet - repo rollout is decided separately with Andy.
