@@ -181,3 +181,10 @@ only be written with the next failure after the window; the first occurrence is 
 **Verified:** 5 new tests, 27/27 pass; strict `tsc` clean; live row written to the personal project's
 `public.activity_events`, read back (cause network) and deleted.
 **Consumers:** none yet - repo rollout is decided separately with Andy.
+
+## Decision 8 - Failure log review fixes (v1.3.1)
+
+**Context (30/09/2026, sckyroom-bug-hunter M17-07 senior-dev-review, before any consumer adopted v1.3.0):**
+the same 3 fixes as sckyroom-project-library's Decision 29: "billing" alone no longer classifies as
+`quota`; the roll-up map drops finished keys once it holds 500; one shared `beforeExit` listener
+flushes every logger instead of one listener per logger. **Verified:** 29/29 tests, strict tsc clean.

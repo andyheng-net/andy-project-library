@@ -33,6 +33,7 @@ const MAX_MESSAGE = 1000;
 const MAX_TASK = 200;
 const MAX_DETAILS = 2000;
 const MAX_STACK_FILES = 10;
+const MAX_HELD = 500;
 
 // ---- masking (same patterns as sckyroom-project-library's piiMask.js) ----
 
@@ -103,7 +104,7 @@ export function classifyFailureCause(err: unknown, opts: { status?: number | nul
   const sqlState = typeof e?.code === "string" && /^[0-9A-Z]{5}$/.test(e.code) ? e.code : "";
   const name = String(e?.name ?? "");
 
-  if (status === 402 || /(^|[^a-z])quota([^a-z]|$)|resource_exhausted|user-set limit|positive balance|spend(?:ing)? (?:cap|limit)|per day|daily limit|billing/i.test(text)) return "quota";
+  if (status === 402 || /(^|[^a-z])quota([^a-z]|$)|resource_exhausted|user-set limit|positive balance|spend(?:ing)? (?:cap|limit)|per day|daily limit|billing (?:hard )?limit/i.test(text)) return "quota";
   if (status === 429 || /rate.?limit|too many requests/i.test(text)) return "rate_limit";
   if (status === 408 || status === 504 || /^(AbortError|TimeoutError)$/.test(name) || /ETIMEDOUT|ESOCKETTIMEDOUT|UND_ERR_[A-Z_]*TIMEOUT/.test(code) || /timed? ?out\b|timeout/i.test(text)) return "timeout";
   if ((HTML_PAGE.test(text) && /supabase|postgrest|PGRST/i.test(text)) || /^(08|57P)/.test(sqlState) || /PGRST00[0-3]/.test(text)) return "db_gateway";
@@ -178,6 +179,19 @@ const shapeOf = (message: string) => message.replace(/[0-9a-f]{8,}/gi, "#").repl
 
 const LOGGED = Symbol.for("sckyroom.failureLog.logged");
 
+// One process-wide beforeExit listener for every logger (one per logger would trip Node's
+// MaxListenersExceeded warning in an app that creates loggers per module or per request).
+const exitFlushers = new Set<() => void>();
+let exitHooked = false;
+function registerExitFlush(flushIfPending: () => void): void {
+  exitFlushers.add(flushIfPending);
+  if (exitHooked || typeof process === "undefined" || typeof process.on !== "function") return;
+  exitHooked = true;
+  try {
+    process.on("beforeExit", () => { for (const f of exitFlushers) f(); });
+  } catch { /* Edge runtime stub: no exit hook */ }
+}
+
 // ---- the logger ----
 
 export type FailureRow = {
@@ -233,6 +247,11 @@ export function createFailureLog(options: FailureLogOptions): FailureLog {
   const held = new Map<string, Held>();
   const inFlight = new Set<Promise<boolean>>();
   let warnedUnconfigured = false;
+
+  // Keeps `held` bounded in a long-running app: drop keys whose window has ended with nothing held.
+  function sweep(t: number): void {
+    for (const [k, h] of held) if (!h.pending && t - h.lastWriteAt >= rollupMs) held.delete(k);
+  }
 
   async function write(row: FailureRow): Promise<boolean> {
     if (!supabaseUrl || !serviceKey || !project) {
@@ -311,6 +330,7 @@ export function createFailureLog(options: FailureLogOptions): FailureLog {
       const key = `${row.task}|${row.cause}|${shapeOf(message)}`;
       const h = held.get(key);
       const t = now();
+      if (!h && held.size >= MAX_HELD) sweep(t);
       if (h && t - h.lastWriteAt < rollupMs) {
         h.pending += 1;
         h.row = row;
@@ -343,13 +363,7 @@ export function createFailureLog(options: FailureLogOptions): FailureLog {
 
   const run = <R>(task: string, fn: () => R | Promise<R>, opts?: FailOptions) => wrap(task, fn, opts)();
 
-  if (flushOnExit && typeof process !== "undefined" && typeof process.on === "function") {
-    try {
-      process.on("beforeExit", () => {
-        if ([...held.values()].some((h) => h.pending)) void flush();
-      });
-    } catch { /* Edge runtime stub: no exit hook */ }
-  }
+  if (flushOnExit) registerExitFlush(() => { if ([...held.values()].some((h) => h.pending)) void flush(); });
 
   return { fail, wrap, run, flush };
 }

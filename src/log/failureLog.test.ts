@@ -89,3 +89,16 @@ test("classifier, provider and stack parsing match the Sckyroom library", () => 
   assert.equal(maskPersonalData("KHC1/R2 - Jane Tan"), "KHC1/R2 - [tenant]");
   assert.equal(maskSecrets("?api_key=abc"), "?api_key=[secret]");
 });
+
+test("many loggers share one beforeExit listener", () => {
+  const before = process.listenerCount("beforeExit");
+  for (let i = 0; i < 20; i++) createFailureLog({ project: `p${i}`, supabaseUrl: "x", serviceKey: "y" });
+  assert.ok(process.listenerCount("beforeExit") - before <= 1);
+});
+
+test("review fixes: billing alone is not quota; held map bounded", async () => {
+  assert.equal(classifyFailureCause(new Error("billing address missing")), "unknown");
+  const { log, writes, advance } = setup({ rollupMs: 1000 });
+  for (let i = 0; i < 600; i++) { await log.fail(`t-${i}`, new Error("x")); advance(2000); }
+  assert.equal(writes.length, 600);
+});
