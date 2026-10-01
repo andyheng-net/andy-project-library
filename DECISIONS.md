@@ -188,3 +188,10 @@ only be written with the next failure after the window; the first occurrence is 
 the same 3 fixes as sckyroom-project-library's Decision 29: "billing" alone no longer classifies as
 `quota`; the roll-up map drops finished keys once it holds 500; one shared `beforeExit` listener
 flushes every logger instead of one listener per logger. **Verified:** 29/29 tests, strict tsc clean.
+
+## Decision 9 - next 16.3.8 in the dev lockfile (01/10/2026, sckyroom-bug-hunter D-186, #2903)
+
+**Context:** Bug Hunter flagged a critical Next.js advisory (RCE in `next/og` ImageResponse) against this
+repo's lockfile (next 16.3.4). `next` is only a dev/peer dependency here (peer range `^16.0.0`
+unchanged), so consumers pick their own version; the fix is the lockfile bump via `npm audit fix`.
+`npm test` 29/29 pass, `npm audit` 0. Tier 2: branch + PR, merge on Andy's approval.
