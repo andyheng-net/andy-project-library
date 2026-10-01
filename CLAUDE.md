@@ -4,6 +4,8 @@ Codebase reference for Claude Code sessions. Update whenever files are added, re
 
 **Personal project - not Sckyroom.** Public repo under Andy's own `andyheng-net` GitHub account.
 
+**Tier 2** (branching rule `~/.claude/branching-staging.md`, set 01/10/2026): branch + PR, merges only on Andy's approval.
+
 ## What This Repo Is
 
 A shared, mechanism-only utility library for Andy's personal Next.js projects, created 06/09/2026 after a cross-project review of `andy-namecard-holder` and `andy-property-investment-calculator` found several files independently duplicated byte-for-byte between the two (most concretely `src/lib/supabase/client.ts`/`server.ts` and the `/api/auth/callback` route). Both projects already documented several other files as "ported from" one another by hand, with no mechanism keeping the copies in sync.
