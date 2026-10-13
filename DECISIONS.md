@@ -195,3 +195,9 @@ flushes every logger instead of one listener per logger. **Verified:** 29/29 tes
 repo's lockfile (next 16.3.4). `next` is only a dev/peer dependency here (peer range `^16.0.0`
 unchanged), so consumers pick their own version; the fix is the lockfile bump via `npm audit fix`.
 `npm test` 29/29 pass, `npm audit` 0. Tier 2: branch + PR, merge on Andy's approval.
+
+## Decision 10 (13/10/2026) - `npm test` runs on every pull request and push to main (`.github/workflows/test.yml`)
+
+**What was decided:** a GitHub Actions workflow runs `npm ci` and `npm test` for every PR and every push to main. Offline only: needs no secret (public personal repo, no private dependency) and nothing else. Actions pinned to commit SHAs. GitHub cannot hard-enforce it as a required check on a free-tier repo, so it is advisory.
+
+**Rollback:** delete `.github/workflows/test.yml`. Personal project, not Sckyroom.

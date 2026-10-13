@@ -112,3 +112,4 @@ Every file above except `authProxy.ts`'s `DEFAULT_PROXY_MATCHER_CONFIG`, the aut
 
 - `DECISIONS.md` - decision log.
 - `security.md` - risk register + audit log (public-by-design note, tag-immutability rule).
+- .github/workflows/test.yml - runs `npm ci` + `npm test` on every PR and push to main; offline, needs no secret (public personal repo, no private dependency) (Decision 10, 13/10/2026).
