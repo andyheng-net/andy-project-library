@@ -65,6 +65,10 @@ export function buildAuthProxy(options: BuildAuthProxyOptions) {
 // a static object"). Each consumer must copy this literal into its own
 // proxy.ts rather than importing it - keep both in sync by hand if this ever
 // changes.
+// Only top-level files are skipped: a pattern like `.*\\.png$` also skips
+// /scenario/x.png, which matches a dynamic page and reaches its server actions
+// with no session (property calculator Decision 38). Server actions must still
+// check the session themselves; the proxy is never the only check.
 export const DEFAULT_PROXY_MATCHER_CONFIG = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|[^/]+\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
