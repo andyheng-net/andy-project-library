@@ -201,3 +201,7 @@ unchanged), so consumers pick their own version; the fix is the lockfile bump vi
 **What was decided:** a GitHub Actions workflow runs `npm ci` and `npm test` for every PR and every push to main. Offline only: needs no secret (public personal repo, no private dependency) and nothing else. Actions pinned to commit SHAs. GitHub cannot hard-enforce it as a required check on a free-tier repo, so it is advisory.
 
 **Rollback:** delete `.github/workflows/test.yml`. Personal project, not Sckyroom.
+
+## Decision 11 (05/11/2026) - proxy matcher reference skips only top-level image files (sckyroom-bug-hunter D-323)
+
+`DEFAULT_PROXY_MATCHER_CONFIG` skipped any path ending in an image extension, so a POST to `/scenario/x.png` skipped the proxy and reached that page's server actions (property calculator Decision 38). The reference now skips only top-level files. Consumers copy this literal by hand, so the calculator and namecard were changed directly.
