@@ -88,6 +88,16 @@ src/llm/sharedRateLimit.ts     acquireSharedLlmSlot(provider, limitPerMinute) (D
                                   "public" schema (never resolveSupabaseSchema()) - see Decision 5
                                   for why. Fails open on any RPC error or after MAX_WAIT_MS
                                   (70s) - never blocks a real call forever.
+src/llm/llmCallCounter.ts      installLlmCallCounter({project, failureLog}) (Decision 12, Bug Hunter
+                                  M28) once in instrumentation.ts register(): wraps global fetch once
+                                  and SAVES each call to an LLM host (env LLM_PROVIDER_HOSTS, else
+                                  DEFAULT_LLM_PROVIDER_HOSTS) before handing the untouched response
+                                  back, via the bump_llm_api_calls RPC in the schema from
+                                  NEXT_PUBLIC_SUPABASE_SCHEMA (public or dev). Row: SGT day, project,
+                                  label (claude-code-dev / production / preview / local-dev), provider,
+                                  model, outcome (worked / limited / failed). A failed save goes to
+                                  failureLog.fail at most once per 24h per instance. Table SQL:
+                                  sckyroom-bug-hunter migrations/external/llm_api_calls_public.sql.
 src/log/failureLog.ts          createFailureLog({project}) (Decision 7) -> {fail(task, err, {cause,
                                   provider, details}), wrap(task, fn), run(task, fn), flush()}. The
                                   TypeScript twin of sckyroom-project-library's failureLog.js (same
