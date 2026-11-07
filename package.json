@@ -1,6 +1,6 @@
 {
   "name": "andy-project-library",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "description": "Shared, dependency-free-of-business-logic utility library for Andy's personal Next.js projects - consolidates code that was independently duplicated across multiple repos.",
   "main": "src/index.ts",
   "types": "src/index.ts",
