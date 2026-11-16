@@ -16,6 +16,6 @@ export {
 } from "./llm/llmCallCounter";
 
 export {
-  createFailureLog, classifyFailureCause, detectProvider, stackFilesOf, maskPersonalData, maskSecrets, FAILURE_CAUSES,
+  createFailureLog, testRunKind, classifyFailureCause, detectProvider, stackFilesOf, maskPersonalData, maskSecrets, FAILURE_CAUSES,
   type FailureLog, type FailureLogOptions, type FailOptions, type FailureCause, type FailureRow,
 } from "./log/failureLog";

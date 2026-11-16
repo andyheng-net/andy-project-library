@@ -215,6 +215,8 @@ export type FailureLogOptions = {
   fetchImpl?: typeof fetch;
   logger?: { error: (msg: string) => void };
   now?: () => number;
+  /** Bug Hunter D-356 (16/11/2026): read once; a test run adds details.test_run. Default process.env. */
+  runEnv?: Record<string, string | undefined>;
 };
 
 export type FailureLog = {
@@ -227,6 +229,17 @@ export type FailureLog = {
 type Held = { lastWriteAt: number; pending: number; row: FailureRow; timer: ReturnType<typeof setTimeout> | null };
 
 const env = (name: string): string | undefined => (typeof process !== "undefined" ? process.env?.[name] : undefined);
+
+/**
+ * Bug Hunter D-356 (16/11/2026): a test run (a command started from a Claude Code session, or CI) is
+ * listed by Bug Hunter but never opens a finding. "claude-code" when CLAUDECODE is set, "ci" for
+ * GITHUB_ACTIONS or CI, otherwise null (Vercel, Render, a laptop script count as real).
+ */
+export function testRunKind(vars: Record<string, string | undefined> = typeof process !== "undefined" ? process.env : {}): "claude-code" | "ci" | null {
+  if (vars.CLAUDECODE) return "claude-code";
+  if (vars.GITHUB_ACTIONS || vars.CI) return "ci";
+  return null;
+}
 
 export function createFailureLog(options: FailureLogOptions): FailureLog {
   const {
@@ -243,7 +256,9 @@ export function createFailureLog(options: FailureLogOptions): FailureLog {
     fetchImpl = fetch,
     logger = console,
     now = () => Date.now(),
+    runEnv = typeof process !== "undefined" ? process.env : {},
   } = options;
+  const testRun = testRunKind(runEnv);
   const held = new Map<string, Held>();
   const inFlight = new Set<Promise<boolean>>();
   let warnedUnconfigured = false;
@@ -325,7 +340,7 @@ export function createFailureLog(options: FailureLogOptions): FailureLog {
         stack_files: stackFilesOf(err, rootDir),
         run_id: runId,
         count: 1,
-        details: capDetails(opts.details),
+        details: testRun ? { ...((capDetails(opts.details) as Record<string, unknown> | null) ?? {}), test_run: testRun } : capDetails(opts.details),
       };
       const key = `${row.task}|${row.cause}|${shapeOf(message)}`;
       const h = held.get(key);
