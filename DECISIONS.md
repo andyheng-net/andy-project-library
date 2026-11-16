@@ -209,3 +209,10 @@ unchanged), so consumers pick their own version; the fix is the lockfile bump vi
 ## Decision 12 (07/11/2026) - installLlmCallCounter: every LLM call counted (sckyroom-bug-hunter M28)
 
 Andy wants every LLM call counted by repo, provider, model and outcome, Claude Code's own calls kept apart (Bug Hunter M28). TypeScript twin of sckyroom-project-library's llmCallCounter.js (its Decision 49), same row shape and outcomes, written to `llm_api_calls` in the shared personal Supabase project (public, or dev in local development, following `NEXT_PUBLIC_SUPABASE_SCHEMA` like failureLog). One change on purpose: each call is saved before the response is handed back (at most 3s), because Vercel freezes an instance once a response is sent and a held batch could be lost. A failed save goes to the app's own failureLog at most once per 24h per instance, so Bug Hunter sees it. Labels add `preview` for a non-production Vercel deployment. The default host list is a constant equal to the Sckyroom library's config file (a file read would not load in the Edge runtime); env `LLM_PROVIDER_HOSTS` overrides it without a code change. Table SQL is in sckyroom-bug-hunter `migrations/external/llm_api_calls_public.sql`, for Andy to run before either app installs it.
+
+## Decision 13 (16/11/2026) - The failure log marks test runs (v1.5.0)
+
+**Why:** sckyroom-bug-hunter D-356. A failure from a test run (a command started from a Claude Code session, or CI) was counted by Bug Hunter as a production failure (false positive #3712, from the Sckyroom side). Same change as sckyroom-project-library Decision 53.
+**Change:** `testRunKind(vars)` in `src/log/failureLog.ts` (exported): "claude-code" when CLAUDECODE is set, "ci" for GITHUB_ACTIONS or CI, else null. `createFailureLog` reads it once (new option `runEnv`, default `process.env`) and adds `test_run` to each row's `details` for a test run. A real run (Vercel, a laptop script) is unchanged. No schema change.
+**Verification:** 41/41 tests (1 new; the suite's setup passes `runEnv: {}`).
+

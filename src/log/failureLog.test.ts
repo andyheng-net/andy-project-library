@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createFailureLog, classifyFailureCause, detectProvider, stackFilesOf, maskPersonalData, maskSecrets, type FailureRow } from "./failureLog.ts";
+import { testRunKind, createFailureLog, classifyFailureCause, detectProvider, stackFilesOf, maskPersonalData, maskSecrets, type FailureRow } from "./failureLog.ts";
 
 function setup(overrides: Record<string, unknown> = {}) {
   const writes: { url: string; headers: Record<string, string>; row: FailureRow }[] = [];
@@ -21,6 +21,7 @@ function setup(overrides: Record<string, unknown> = {}) {
     fetchImpl,
     logger: { error: (m: string) => errors.push(m) },
     now: () => t,
+    runEnv: {}, // a real run unless a test says otherwise (this suite may run inside Claude Code)
     ...overrides,
   });
   return { log, writes, errors, advance: (ms: number) => { t += ms; } };
@@ -101,4 +102,16 @@ test("review fixes: billing alone is not quota; held map bounded", async () => {
   const { log, writes, advance } = setup({ rollupMs: 1000 });
   for (let i = 0; i < 600; i++) { await log.fail(`t-${i}`, new Error("x")); advance(2000); }
   assert.equal(writes.length, 600);
+});
+
+test("Bug Hunter D-356: a test run is marked in details; a real run is not", async () => {
+  assert.equal(testRunKind({ CLAUDECODE: "1" }), "claude-code");
+  assert.equal(testRunKind({ CI: "true" }), "ci");
+  assert.equal(testRunKind({ VERCEL: "1" }), null);
+  const dev = setup({ runEnv: { CLAUDECODE: "1" } });
+  await dev.log.fail("card extraction", new Error("fetch failed"), { details: { n: 3 } });
+  assert.deepEqual(dev.writes[0].row.details, { n: 3, test_run: "claude-code" });
+  const prod = setup({ runEnv: { VERCEL: "1" } });
+  await prod.log.fail("card extraction", new Error("fetch failed"));
+  assert.equal(prod.writes[0].row.details, null);
 });
