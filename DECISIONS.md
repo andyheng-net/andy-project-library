@@ -216,3 +216,8 @@ Andy wants every LLM call counted by repo, provider, model and outcome, Claude C
 **Change:** `testRunKind(vars)` in `src/log/failureLog.ts` (exported): "claude-code" when CLAUDECODE is set, "ci" for GITHUB_ACTIONS or CI, else null. `createFailureLog` reads it once (new option `runEnv`, default `process.env`) and adds `test_run` to each row's `details` for a test run. A real run (Vercel, a laptop script) is unchanged. No schema change.
 **Verification:** 41/41 tests (1 new; the suite's setup passes `runEnv: {}`).
 
+
+## Decision 14 (18/11/2026) - Dev lockfile next 16.4.3 -> 16.4.6
+**Why:** Bug Hunter flagged next 16.4.3 (Bug Hunter D-370, 18/11/2026): GHSA-mfr8-8qww-v76h and GHSA-vc7v-qv4w-wrv8, cache leaks across root params in 'use cache' / unstable_cache, fixed in 16.4.5. Not reachable here (no 'use cache' or unstable_cache in the code), bumped anyway.
+**Change:** lockfile only; the peer range stays ^16.4.3 (each app pins its own next, all bumped the same day), so no release.
+**Verification:** npm audit 0, 41/41 tests.
